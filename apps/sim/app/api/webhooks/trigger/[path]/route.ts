@@ -1,7 +1,7 @@
 import { tasks } from '@trigger.dev/sdk'
 import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
-import { checkServerSideUsageLimits } from '@/lib/billing'
+import { checkServerSideUsageLimits, isEnterprisePlan } from '@/lib/billing'
 import { env, isTruthy } from '@/lib/env'
 import { createLogger } from '@/lib/logs/console/logger'
 import {
@@ -333,7 +333,7 @@ export async function POST(
     // Continue processing - better to risk usage limit bypass than fail webhook
   }
 
-  // --- PHASE 5: Queue webhook execution (trigger.dev or direct based on env) ---
+  // --- PHASE 5: Queue webhook execution (trigger.dev or direct based on plan/env) ---
   try {
     const payload = {
       webhookId: foundWebhook.id,
@@ -346,7 +346,11 @@ export async function POST(
       blockId: foundWebhook.blockId,
     }
 
-    const useTrigger = isTruthy(env.TRIGGER_DEV_ENABLED)
+    // Check if user is on enterprise plan - they bypass trigger.dev queuing
+    const isEnterprise = await isEnterprisePlan(foundWorkflow.userId)
+
+    // Enterprise users always execute directly, others check TRIGGER_DEV_ENABLED env
+    const useTrigger = !isEnterprise && isTruthy(env.TRIGGER_DEV_ENABLED)
 
     if (useTrigger) {
       const handle = await tasks.trigger('webhook-execution', payload)
@@ -358,8 +362,9 @@ export async function POST(
       void executeWebhookJob(payload).catch((error) => {
         logger.error(`[${requestId}] Direct webhook execution failed`, error)
       })
+      const reason = isEnterprise ? 'Enterprise plan' : 'Trigger.dev disabled'
       logger.info(
-        `[${requestId}] Queued direct webhook execution for ${foundWebhook.provider} webhook (Trigger.dev disabled)`
+        `[${requestId}] Queued direct webhook execution for ${foundWebhook.provider} webhook (${reason})`
       )
     }
 
