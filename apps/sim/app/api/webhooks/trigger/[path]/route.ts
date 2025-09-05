@@ -1,7 +1,7 @@
 import { tasks } from '@trigger.dev/sdk'
 import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
-import { checkServerSideUsageLimits, isEnterprisePlan } from '@/lib/billing'
+import { checkServerSideUsageLimits } from '@/lib/billing'
 import { env, isTruthy } from '@/lib/env'
 import { createLogger } from '@/lib/logs/console/logger'
 import {
@@ -247,6 +247,7 @@ export async function POST(
   }
 
   // --- PHASE 3: Rate limiting for webhook execution ---
+  let isEnterprise = false
   try {
     // Get user subscription for rate limiting
     const [subscriptionRecord] = await db
@@ -256,6 +257,7 @@ export async function POST(
       .limit(1)
 
     const subscriptionPlan = (subscriptionRecord?.plan || 'free') as SubscriptionPlan
+    isEnterprise = subscriptionPlan === 'enterprise'
 
     // Check async rate limits (webhooks are processed asynchronously)
     const rateLimiter = new RateLimiter()
@@ -346,10 +348,8 @@ export async function POST(
       blockId: foundWebhook.blockId,
     }
 
-    // Check if user is on enterprise plan - they bypass trigger.dev queuing
-    const isEnterprise = await isEnterprisePlan(foundWorkflow.userId)
-
     // Enterprise users always execute directly, others check TRIGGER_DEV_ENABLED env
+    // Note: isEnterprise was already determined during rate limiting phase
     const useTrigger = !isEnterprise && isTruthy(env.TRIGGER_DEV_ENABLED)
 
     if (useTrigger) {
