@@ -1,0 +1,282 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sim
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sim-secrets
+  namespace: sim
+type: Opaque
+data:
+  better-auth-secret: ""  # Will be populated from Secret Manager
+  encryption-key: ""      # Will be populated from Secret Manager
+  db-password: ""         # Will be populated from Secret Manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sim-app
+  namespace: sim
+  labels:
+    app: sim-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sim-app
+  template:
+    metadata:
+      labels:
+        app: sim-app
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: sim-app
+        image: us-central1-docker.pkg.dev/buildz-ai/sim-repo/simstudio:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: NEXT_PUBLIC_APP_URL
+          value: "https://buildz.ai"
+        - name: BETTER_AUTH_URL
+          value: "https://buildz.ai"
+        - name: SOCKET_SERVER_URL
+          value: "https://buildz.ai"
+        - name: NEXT_PUBLIC_SOCKET_URL
+          value: "https://buildz.ai"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-url
+              key: database-url
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: sim-secrets
+              key: better-auth-secret
+        - name: ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sim-secrets
+              key: encryption-key
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sim-secrets
+              key: db-password
+        - name: NEXT_PUBLIC_BLOB_BASE_URL
+          value: "https://storage.googleapis.com/sim-storage-20250915002542"
+        resources:
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sim-app
+  namespace: sim
+spec:
+  selector:
+    app: sim-app
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sim-realtime
+  namespace: sim
+  labels:
+    app: sim-realtime
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sim-realtime
+  template:
+    metadata:
+      labels:
+        app: sim-realtime
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: sim-realtime
+        image: us-central1-docker.pkg.dev/buildz-ai/sim-repo/realtime:latest
+        ports:
+        - containerPort: 3002
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: NEXT_PUBLIC_APP_URL
+          value: "https://buildz.ai"
+        - name: BETTER_AUTH_URL
+          value: "https://buildz.ai"
+        - name: NEXT_PUBLIC_SOCKET_URL
+          value: "https://buildz.ai"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-url
+              key: database-url
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: sim-secrets
+              key: better-auth-secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sim-secrets
+              key: db-password
+        - name: ALLOWED_ORIGINS
+          value: "https://buildz.ai"
+        resources:
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sim-realtime
+  namespace: sim
+spec:
+  selector:
+    app: sim-realtime
+  ports:
+  - port: 3002
+    targetPort: 3002
+  type: NodePort
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sim-migrations
+  namespace: sim
+spec:
+  template:
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: migrations
+        image: us-central1-docker.pkg.dev/buildz-ai/sim-repo/migrations:latest
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-url
+              key: database-url
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sim-secrets
+              key: db-password
+        resources:
+          limits:
+            memory: "1Gi"
+          requests:
+            memory: "512Mi"
+            cpu: "100m"
+      restartPolicy: Never
+  backoffLimit: 3
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sim-service-account
+  namespace: sim
+  annotations:
+    iam.gke.io/gcp-service-account: "sim-service-account@buildz-ai.iam.gserviceaccount.com"
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: sim-backend-config
+  namespace: sim
+spec:
+  healthCheck:
+    checkIntervalSec: 10
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /api/health
+    port: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sim-ingress
+  namespace: sim
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: "sim-ip"
+    kubernetes.io/ingress.allow-http: "true"
+    cloud.google.com/backend-config: '{"default": "sim-backend-config"}'
+spec:
+  ingressClassName: "gce"
+  rules:
+  - host: buildz.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sim-app
+            port:
+              number: 3000
+  - host: ws.buildz.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sim-realtime
+            port:
+              number: 3002

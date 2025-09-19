@@ -1,0 +1,381 @@
+# Custom GCP values for Sim deployment - bypasses validation
+global:
+  imageRegistry: "gcr.io"
+  useRegistryForAllImages: true
+  imagePullSecrets: []
+  commonLabels: {}
+  storageClass: "standard-rwo"
+
+# Main Sim application configuration
+app:
+  enabled: true
+  
+  image:
+    repository: "gcr.io/buildz-ai/simstudio"
+    tag: "latest"
+    pullPolicy: Always
+  
+  replicaCount: 2
+  
+  resources:
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+  
+  nodeSelector:
+    cloud.google.com/gke-nodepool: "default-pool"
+  
+  podSecurityContext:
+    fsGroup: 1001
+  
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+  
+  env:
+    # Application URLs
+    NEXT_PUBLIC_APP_URL: "https://buildz.ai"
+    BETTER_AUTH_URL: "https://buildz.ai"
+    SOCKET_SERVER_URL: "https://buildz.ai"
+    NEXT_PUBLIC_SOCKET_URL: "https://buildz.ai"
+    
+    # Node environment
+    NODE_ENV: "production"
+    NEXT_TELEMETRY_DISABLED: "1"
+    
+    # Database configuration (Cloud SQL)
+    DATABASE_URL: "postgresql://simuser:placeholder@/sim?host=/cloudsql/buildz-ai:us-central1:sim-postgres"
+    
+    # Authentication and encryption secrets (will be injected from Secret Manager)
+    BETTER_AUTH_SECRET: "placeholder-32-char-secret-here-12345"
+    ENCRYPTION_KEY: "placeholder-32-char-secret-here-12345"
+    
+    # Email & Communication
+    RESEND_API_KEY: ""
+    FROM_EMAIL_ADDRESS: ""
+    EMAIL_DOMAIN: ""
+    
+    # OAuth Integration Credentials
+    GOOGLE_CLIENT_ID: ""
+    GOOGLE_CLIENT_SECRET: ""
+    GITHUB_CLIENT_ID: ""
+    GITHUB_CLIENT_SECRET: ""
+    
+    # AI Provider API Keys
+    OPENAI_API_KEY: ""
+    ANTHROPIC_API_KEY_1: ""
+    MISTRAL_API_KEY: ""
+    OLLAMA_URL: "http://ollama:11434"
+    
+    # Cloud Storage configuration
+    NEXT_PUBLIC_BLOB_BASE_URL: "https://storage.googleapis.com/sim-storage-20250915002542"
+    
+    # Rate Limiting Configuration
+    RATE_LIMIT_WINDOW_MS: "60000"
+    RATE_LIMIT_FREE_SYNC: "10"
+    RATE_LIMIT_PRO_SYNC: "25"
+    RATE_LIMIT_TEAM_SYNC: "75"
+    RATE_LIMIT_ENTERPRISE_SYNC: "150"
+    RATE_LIMIT_FREE_ASYNC: "50"
+    RATE_LIMIT_PRO_ASYNC: "200"
+    RATE_LIMIT_TEAM_ASYNC: "500"
+    RATE_LIMIT_ENTERPRISE_ASYNC: "1000"
+    MANUAL_EXECUTION_LIMIT: "999999"
+    
+    # UI Branding & Whitelabeling Configuration
+    NEXT_PUBLIC_BRAND_NAME: "Sim"
+    NEXT_PUBLIC_BRAND_LOGO_URL: ""
+    NEXT_PUBLIC_BRAND_FAVICON_URL: ""
+    NEXT_PUBLIC_CUSTOM_CSS_URL: ""
+    NEXT_PUBLIC_SUPPORT_EMAIL: "help@sim.ai"
+    NEXT_PUBLIC_DOCUMENTATION_URL: ""
+    NEXT_PUBLIC_TERMS_URL: ""
+    NEXT_PUBLIC_PRIVACY_URL: ""
+    
+    # Monitoring & Analytics
+    NEXT_PUBLIC_SENTRY_DSN: ""
+    
+    # Access Control
+    ALLOWED_LOGIN_EMAILS: ""
+    ALLOWED_LOGIN_DOMAINS: ""
+  
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Realtime socket server configuration
+realtime:
+  enabled: true
+  
+  image:
+    repository: "gcr.io/buildz-ai/realtime"
+    tag: "latest"
+    pullPolicy: Always
+  
+  replicaCount: 2
+  
+  resources:
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  nodeSelector:
+    cloud.google.com/gke-nodepool: "default-pool"
+  
+  podSecurityContext:
+    fsGroup: 1001
+  
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+  
+  env:
+    # Application URLs
+    NEXT_PUBLIC_APP_URL: "https://buildz.ai"
+    BETTER_AUTH_URL: "https://buildz.ai"
+    NEXT_PUBLIC_SOCKET_URL: "https://buildz.ai"
+    
+    # Database configuration (Cloud SQL)
+    DATABASE_URL: "postgresql://simuser:placeholder@/sim?host=/cloudsql/buildz-ai:us-central1:sim-postgres"
+    
+    # Authentication secret
+    BETTER_AUTH_SECRET: "placeholder-32-char-secret-here-12345"
+    
+    # CORS configuration
+    ALLOWED_ORIGINS: "https://buildz.ai"
+    
+    # Node environment
+    NODE_ENV: "production"
+  
+  service:
+    type: ClusterIP
+    port: 3002
+    targetPort: 3002
+  
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 3002
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 3002
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Database migrations job configuration
+migrations:
+  enabled: true
+  
+  image:
+    repository: "gcr.io/buildz-ai/migrations"
+    tag: "latest"
+    pullPolicy: Always
+  
+  resources:
+    limits:
+      memory: "1Gi"
+    requests:
+      memory: "512Mi"
+      cpu: "100m"
+  
+  podSecurityContext:
+    fsGroup: 1001
+  
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+
+# Disable internal PostgreSQL (using Cloud SQL instead)
+postgresql:
+  enabled: false
+
+# External database configuration (Cloud SQL)
+externalDatabase:
+  enabled: true
+  host: "buildz-ai:us-central1:sim-postgres"
+  port: 5432
+  username: "simuser"
+  password: "placeholder"
+  database: "sim"
+  sslMode: "require"
+
+# Disable Ollama
+ollama:
+  enabled: false
+
+# Ingress configuration for GCP
+ingress:
+  enabled: true
+  className: "gce"
+  
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: "sim-ip"
+    networking.gke.io/managed-certificates: "sim-ssl-cert"
+    kubernetes.io/ingress.allow-http: "false"
+  
+  # Main application host configuration
+  app:
+    host: "buildz.ai"
+    paths:
+      - path: /
+        pathType: Prefix
+  
+  # Realtime service host configuration
+  realtime:
+    host: "ws.buildz.ai"
+    paths:
+      - path: /
+        pathType: Prefix
+  
+  # TLS configuration
+  tls:
+    enabled: true
+    secretName: "sim-tls-secret"
+
+# Service Account configuration
+serviceAccount:
+  create: true
+  annotations:
+    iam.gke.io/gcp-service-account: "sim-service-account@buildz-ai.iam.gserviceaccount.com"
+  name: "sim-service-account"
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Monitoring configuration
+monitoring:
+  serviceMonitor:
+    enabled: true
+    labels:
+      app: "sim"
+    path: "/metrics"
+    interval: "30s"
+    scrapeTimeout: "10s"
+
+# Network policies
+networkPolicy:
+  enabled: true
+  
+  # Allow ingress from ingress controller
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: "ingress-nginx"
+      ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 3002
+  
+  # Allow egress to Cloud SQL and external APIs
+  egress:
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 5432  # Cloud SQL
+        - protocol: TCP
+          port: 443   # HTTPS
+        - protocol: TCP
+          port: 80    # HTTP
+
+# CronJob configuration
+cronjobs:
+  enabled: true
+  
+  jobs:
+    scheduleExecution:
+      enabled: true
+      name: "schedule-execution"
+      schedule: "*/1 * * * *"
+      path: "/api/schedules/execute"
+      concurrencyPolicy: "Forbid"
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      
+    gmailWebhookPoll:
+      enabled: true
+      name: "gmail-webhook-poll"
+      schedule: "*/1 * * * *"
+      path: "/api/webhooks/poll/gmail"
+      concurrencyPolicy: "Forbid"
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      
+    outlookWebhookPoll:
+      enabled: true
+      name: "outlook-webhook-poll"
+      schedule: "*/1 * * * *"
+      path: "/api/webhooks/poll/outlook"
+      concurrencyPolicy: "Forbid"
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+
+# Telemetry configuration
+telemetry:
+  enabled: true
+  
+  image:
+    repository: "otel/opentelemetry-collector-contrib"
+    tag: "0.91.0"
+    pullPolicy: "IfNotPresent"
+  
+  replicaCount: 1
+  
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+  
+  # Google Cloud Operations (formerly Stackdriver)
+  googleCloud:
+    enabled: true
+    projectId: "buildz-ai"
+    serviceAccount: "sim-telemetry@buildz-ai.iam.gserviceaccount.com"
+
