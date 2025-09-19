@@ -69,3 +69,7 @@ start-collector.sh
 
 ## Helm Chart Tests
 helm/sim/test
+
+# Binary files
+*.exe
+helm/windows-amd64/helm.exe
