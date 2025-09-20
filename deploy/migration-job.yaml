@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migration-fixed
+  namespace: sim
+spec:
+  template:
+    spec:
+      containers:
+      - name: migration
+        image: us-central1-docker.pkg.dev/buildz-ai/sim-repo/simstudio:latest
+        command: ["bunx", "drizzle-kit", "push"]
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-url
+              key: database-url
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: sim-secrets
+              key: better-auth-secret
+        - name: ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sim-secrets
+              key: encryption-key
+        workingDir: /app/apps/sim
+        resources:
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+          requests:
+            memory: "512Mi"
+            cpu: "100m"
+      restartPolicy: Never
+  backoffLimit: 3

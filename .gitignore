@@ -73,3 +73,4 @@ helm/sim/test
 # Binary files
 *.exe
 helm/windows-amd64/helm.exe
+.devcontainer/Dockerfile-bak

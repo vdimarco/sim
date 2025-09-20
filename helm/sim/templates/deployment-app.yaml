@@ -67,11 +67,28 @@ spec:
           env:
             - name: DATABASE_URL
               value: {{ include "sim.databaseUrl" . | quote }}
+            # Secrets sourced from sim-secrets created by deploy scripts (GCP Secret Manager)
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sim.fullname" . }}-secrets
+                  key: better-auth-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sim.fullname" . }}-secrets
+                  key: encryption-key
+            - name: EXTERNAL_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sim.fullname" . }}-secrets
+                  key: db-password
             - name: SOCKET_SERVER_URL
               value: {{ .Values.app.env.SOCKET_SERVER_URL | default "http://localhost:3002" | quote }}
             - name: OLLAMA_URL
               value: {{ include "sim.ollamaUrl" . | quote }}
-            {{- range $key, $value := omit .Values.app.env "DATABASE_URL" "SOCKET_SERVER_URL" "OLLAMA_URL" }}
+            {{- /* Map remaining env vars from values, excluding ones backed by secrets */ -}}
+            {{- range $key, $value := omit .Values.app.env "DATABASE_URL" "SOCKET_SERVER_URL" "OLLAMA_URL" "BETTER_AUTH_SECRET" "ENCRYPTION_KEY" "EXTERNAL_DB_PASSWORD" }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
@@ -97,6 +114,9 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ include "sim.fullname" . }}-external-db-secret
+            # Backing secrets (auth + DB password) from sim-secrets
+            - secretRef:
+                name: {{ include "sim.fullname" . }}-secrets
           {{- end }}
           {{- if .Values.app.livenessProbe }}
           livenessProbe:

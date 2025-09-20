@@ -6,12 +6,28 @@
 set -e
 
 # Configuration
-PROJECT_ID="buildz-ai"
-REGION="us-central1"
-ZONE="us-central1-a"
-CLUSTER_NAME="sim-cluster"
-DB_INSTANCE_NAME="sim-postgres"
+PROJECT_ID="${GCP_PROJECT_ID:-buildz-ai}"
+REGION="${GCP_REGION:-us-central1}"
+ZONE="${GCP_ZONE:-us-central1-a}"
+CLUSTER_NAME="${GCP_CLUSTER_NAME:-sim-cluster}"
+DB_INSTANCE_NAME="${GCP_DB_INSTANCE:-sim-postgres}"
 BUCKET_NAME="sim-storage-$(date +%s)"  # Unique bucket name
+
+# Validate required tools
+echo "🔍 Validating required tools..."
+command -v gcloud >/dev/null 2>&1 || { echo "❌ gcloud is required but not installed. Aborting." >&2; exit 1; }
+command -v kubectl >/dev/null 2>&1 || { echo "❌ kubectl is required but not installed. Aborting." >&2; exit 1; }
+command -v helm >/dev/null 2>&1 || { echo "❌ helm is required but not installed. Aborting." >&2; exit 1; }
+command -v docker >/dev/null 2>&1 || { echo "❌ docker is required but not installed. Aborting." >&2; exit 1; }
+
+# Check if user is authenticated
+echo "🔐 Checking authentication..."
+if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q .; then
+    echo "❌ No active gcloud authentication found. Please run: gcloud auth login"
+    exit 1
+fi
+
+echo "✅ All required tools are available and user is authenticated"
 
 echo "🚀 Setting up Google Cloud Platform for Sim deployment..."
 

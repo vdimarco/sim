@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-sql-proxy
+  namespace: sim
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloud-sql-proxy
+  template:
+    metadata:
+      labels:
+        app: cloud-sql-proxy
+      annotations:
+        iam.gke.io/gcp-service-account: sim-sa@buildz-ai.iam.gserviceaccount.com
+    spec:
+      serviceAccountName: sim-sa
+      containers:
+      - name: cloud-sql-proxy
+        image: gcr.io/cloudsql-docker/gce-proxy:1.33.2
+        command:
+          - "/cloud_sql_proxy"
+          - "-instances=buildz-ai:us-central1:sim-postgres=tcp:0.0.0.0:5432"
+        ports:
+        - containerPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloud-sql-proxy
+  namespace: sim
+spec:
+  selector:
+    app: cloud-sql-proxy
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP

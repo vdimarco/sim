@@ -6,16 +6,32 @@
 set -e
 
 # Configuration
-PROJECT_ID="buildz-ai"
-CLUSTER_NAME="sim-cluster"
-NAMESPACE="sim"
-RELEASE_NAME="sim"
+PROJECT_ID="${GCP_PROJECT_ID:-buildz-ai}"
+CLUSTER_NAME="${GCP_CLUSTER_NAME:-sim-cluster}"
+NAMESPACE="${GCP_NAMESPACE:-sim}"
+RELEASE_NAME="${GCP_RELEASE_NAME:-sim}"
+ZONE="${GCP_ZONE:-us-central1-a}"
+
+# Validate required tools
+echo "🔍 Validating required tools..."
+command -v gcloud >/dev/null 2>&1 || { echo "❌ gcloud is required but not installed. Aborting." >&2; exit 1; }
+command -v kubectl >/dev/null 2>&1 || { echo "❌ kubectl is required but not installed. Aborting." >&2; exit 1; }
+command -v helm >/dev/null 2>&1 || { echo "❌ helm is required but not installed. Aborting." >&2; exit 1; }
+
+# Check if user is authenticated
+echo "🔐 Checking authentication..."
+if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q .; then
+    echo "❌ No active gcloud authentication found. Please run: gcloud auth login"
+    exit 1
+fi
+
+echo "✅ All required tools are available and user is authenticated"
 
 echo "🚀 Deploying Sim to Google Kubernetes Engine..."
 
 # Ensure kubectl is configured
 echo "🔧 Configuring kubectl..."
-gcloud container clusters get-credentials $CLUSTER_NAME --zone=us-central1-a
+gcloud container clusters get-credentials $CLUSTER_NAME --zone=$ZONE
 
 # Create namespace if it doesn't exist
 echo "📁 Creating namespace..."

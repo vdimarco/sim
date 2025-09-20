@@ -10,53 +10,106 @@ This guide will help you deploy Sim to Google Cloud Platform for buildz.ai.
 4. **Docker** installed
 5. **Domain ownership** of buildz.ai and ws.buildz.ai
 
-## Step 1: GCP Project Setup
+## Step 1: Prerequisites
 
-First, ensure you have the buildz-ai project set up and authenticated:
+Before starting, ensure you have the following installed and configured:
+
+### Required Tools
+- **Google Cloud SDK** (gcloud CLI)
+- **kubectl** (Kubernetes CLI)
+- **Helm** (Kubernetes package manager)
+- **Docker** (Container runtime)
+
+### Installation Commands
+
+**Windows (PowerShell)**:
+```powershell
+# Install Google Cloud SDK
+winget install Google.CloudSDK
+
+# Install kubectl
+gcloud components install kubectl
+
+# Install Helm
+choco install kubernetes-helm
+
+# Install Docker Desktop
+winget install Docker.DockerDesktop
+```
+
+**macOS/Linux**:
+```bash
+# Install Google Cloud SDK
+curl https://sdk.cloud.google.com | bash
+
+# Install kubectl
+gcloud components install kubectl
+
+# Install Helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# Install Docker
+# Follow instructions at https://docs.docker.com/get-docker/
+```
+
+### Authentication
 
 ```bash
-# Set the project
-gcloud config set project buildz-ai
+# Set the project (replace with your project ID)
+gcloud config set project YOUR_PROJECT_ID
 
 # Authenticate
 gcloud auth login
 gcloud auth application-default login
+
+# Verify authentication
+gcloud auth list
 ```
 
-## Step 2: Create Infrastructure
+## Step 2: Quick Deployment (Recommended)
 
-Run the GCP setup script to create all necessary resources:
+Use the comprehensive deployment script that handles everything:
 
+**Windows (PowerShell)**:
+```powershell
+# Run the PowerShell deployment script
+.\deploy\deploy-gcp.ps1 -ProjectId "your-project-id" -Domain "your-domain.com" -WsDomain "ws.your-domain.com"
+```
+
+**macOS/Linux**:
+```bash
+# Make script executable and run
+chmod +x deploy/deploy-gcp.sh
+./deploy/deploy-gcp.sh
+```
+
+This single script will:
+- ✅ Validate prerequisites and authentication
+- ✅ Create GKE cluster (sim-cluster)
+- ✅ Create Cloud SQL PostgreSQL instance (sim-postgres)
+- ✅ Set up Secret Manager with generated secrets
+- ✅ Build and push all Docker images
+- ✅ Deploy to GKE using Helm
+- ✅ Configure ingress and SSL certificates
+- ✅ Reserve static IP address
+
+## Step 3: Manual Deployment (Alternative)
+
+If you prefer to run each step manually:
+
+### 3.1 Create Infrastructure
 ```bash
 chmod +x deploy/gcp-setup.sh
 ./deploy/gcp-setup.sh
 ```
 
-This will create:
-- GKE cluster (sim-cluster)
-- Cloud SQL PostgreSQL instance (sim-postgres)
-- Cloud Storage bucket
-- Secret Manager secrets
-- Service accounts with proper permissions
-
-## Step 3: Build and Push Docker Images
-
-Build and push all required Docker images to Google Container Registry:
-
+### 3.2 Build and Push Images
 ```bash
 chmod +x deploy/build-and-push.sh
 ./deploy/build-and-push.sh
 ```
 
-This will build and push:
-- Main application (simstudio)
-- Realtime service (realtime)
-- Database migrations (migrations)
-
-## Step 4: Deploy to GKE
-
-Deploy the application using Helm:
-
+### 3.3 Deploy to GKE
 ```bash
 chmod +x deploy/deploy-to-gke.sh
 ./deploy/deploy-to-gke.sh
@@ -132,11 +185,42 @@ kubectl scale deployment sim-realtime --replicas=3 -n sim
 
 ## Troubleshooting
 
+If you encounter issues during deployment, check the comprehensive troubleshooting guide:
+
+📖 **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Complete troubleshooting guide
+
+### Quick Fixes
+
+1. **Authentication Issues**:
+   ```bash
+   gcloud auth login
+   gcloud auth application-default login
+   ```
+
+2. **Docker Not Running**:
+   - Start Docker Desktop
+   - Wait for full initialization
+
+3. **Missing Tools**:
+   - Install required tools (see Prerequisites section)
+   - Restart terminal after installation
+
+4. **Deployment Failures**:
+   ```bash
+   # Check pod status
+   kubectl get pods -n sim
+   
+   # Check logs
+   kubectl logs -f deployment/sim-app -n sim
+   ```
+
 ### Common Issues
 
 1. **Pod startup failures**: Check resource limits and secrets
 2. **Database connection issues**: Verify Cloud SQL proxy configuration
 3. **Ingress not working**: Check DNS configuration and SSL certificates
+4. **Authentication errors**: Re-run `gcloud auth login`
+5. **Docker build failures**: Check Docker is running and has sufficient resources
 
 ### Useful Commands
 

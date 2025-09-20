@@ -9,6 +9,26 @@ set -e
 PROJECT_ID="buildz-ai"
 REGISTRY="gcr.io/$PROJECT_ID"
 
+# Validate required tools
+echo "🔍 Validating required tools..."
+command -v gcloud >/dev/null 2>&1 || { echo "❌ gcloud is required but not installed. Aborting." >&2; exit 1; }
+command -v docker >/dev/null 2>&1 || { echo "❌ docker is required but not installed. Aborting." >&2; exit 1; }
+
+# Check if user is authenticated
+echo "🔐 Checking authentication..."
+if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q .; then
+    echo "❌ No active gcloud authentication found. Please run: gcloud auth login"
+    exit 1
+fi
+
+# Check if Docker is running
+if ! docker info >/dev/null 2>&1; then
+    echo "❌ Docker is not running. Please start Docker and try again."
+    exit 1
+fi
+
+echo "✅ All required tools are available and user is authenticated"
+
 echo "🐳 Building and pushing Docker images to GCR..."
 
 # Authenticate with GCR
