@@ -42,8 +42,8 @@ app:
     # Application URLs
     NEXT_PUBLIC_APP_URL: "https://buildz.ai"
     BETTER_AUTH_URL: "https://buildz.ai"
-    SOCKET_SERVER_URL: "https://buildz.ai"
-    NEXT_PUBLIC_SOCKET_URL: "https://buildz.ai"
+    SOCKET_SERVER_URL: "https://ws.buildz.ai"
+    NEXT_PUBLIC_SOCKET_URL: "https://ws.buildz.ai"
     
     # Node environment
     NODE_ENV: "production"
@@ -160,7 +160,7 @@ realtime:
     # Application URLs
     NEXT_PUBLIC_APP_URL: "https://buildz.ai"
     BETTER_AUTH_URL: "https://buildz.ai"
-    NEXT_PUBLIC_SOCKET_URL: "https://buildz.ai"
+    NEXT_PUBLIC_SOCKET_URL: "https://ws.buildz.ai"
     
     # Database configuration (Cloud SQL)
     DATABASE_URL: "postgresql://simuser:PASSWORD@/sim?host=/cloudsql/buildz-ai:us-central1:sim-postgres"
@@ -227,7 +227,7 @@ postgresql:
 # External database configuration (Cloud SQL)
 externalDatabase:
   enabled: true
-  host: "/cloudsql/buildz-ai:us-central1:sim-postgres"  # Replace placeholders
+  host: "cloud-sql-proxy.sim.svc.cluster.local"  # Use ClusterIP service for Cloud SQL proxy
   port: 5432
   username: "simuser"
   password: "placeholder"  # Will be injected from Secret Manager
