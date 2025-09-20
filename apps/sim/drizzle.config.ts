@@ -1,11 +1,11 @@
 import type { Config } from 'drizzle-kit'
-import { env } from './lib/env'
 
 export default {
   schema: './db/schema.ts',
   out: './db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: env.DATABASE_URL,
+    // Use process.env directly so drizzle can run outside Next.js runtime
+    url: (process.env.DATABASE_URL as string) || '',
   },
 } satisfies Config

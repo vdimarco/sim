@@ -17,7 +17,7 @@
     "prepare": "cd ../.. && bun husky",
     "db:push": "bunx drizzle-kit push",
     "db:studio": "bunx drizzle-kit studio",
-    "db:migrate": "bunx drizzle-kit migrate",
+    "db:migrate": "bun run db/migrate.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
