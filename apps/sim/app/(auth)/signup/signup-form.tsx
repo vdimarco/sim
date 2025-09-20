@@ -278,16 +278,16 @@ function SignupFormContent({
               errorMessage.push(
                 'An account with this email already exists. Please sign in instead.'
               )
-              setEmailError(errorMessage[0])
+              setEmailError(errorMessage[errorMessage.length - 1])
             } else if (
               ctx.error.code?.includes('BAD_REQUEST') ||
               ctx.error.message?.includes('Email and password sign up is not enabled')
             ) {
               errorMessage.push('Email signup is currently disabled.')
-              setEmailError(errorMessage[0])
+              setEmailError(errorMessage[errorMessage.length - 1])
             } else if (ctx.error.code?.includes('INVALID_EMAIL')) {
               errorMessage.push('Please enter a valid email address.')
-              setEmailError(errorMessage[0])
+              setEmailError(errorMessage[errorMessage.length - 1])
             } else if (ctx.error.code?.includes('PASSWORD_TOO_SHORT')) {
               errorMessage.push('Password must be at least 8 characters long.')
               setPasswordErrors(errorMessage)
