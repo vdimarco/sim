@@ -15,6 +15,12 @@
     "build": "next build --turbopack",
     "start": "next start",
     "prepare": "cd ../.. && bun husky",
+<<<<<<< HEAD
+=======
+    "db:push": "bunx drizzle-kit push",
+    "db:studio": "bunx drizzle-kit studio",
+    "db:migrate": "bun run db/migrate.js",
+>>>>>>> 29d093289248caebf5b5f9b843f48c9bdc7df77d
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

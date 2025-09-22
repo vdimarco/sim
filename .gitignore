@@ -69,4 +69,12 @@ start-collector.sh
 
 ## Helm Chart Tests
 helm/sim/test
+<<<<<<< HEAD
 i18n.cache
+=======
+
+# Binary files
+*.exe
+helm/windows-amd64/helm.exe
+.devcontainer/Dockerfile-bak
+>>>>>>> 29d093289248caebf5b5f9b843f48c9bdc7df77d

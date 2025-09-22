@@ -1,0 +1,63 @@
+# Cloud SQL Proxy sidecar configuration for Sim
+# This allows the application to connect to Cloud SQL using private IP
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-sql-proxy
+  namespace: sim
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloud-sql-proxy
+  template:
+    metadata:
+      labels:
+        app: cloud-sql-proxy
+    spec:
+      serviceAccountName: sim-service-account
+      containers:
+      - name: cloud-sql-proxy
+        image: gcr.io/cloudsql-docker/gce-proxy:1.33.2
+        command:
+          - "/cloud_sql_proxy"
+          - "-instances=PROJECT_ID:REGION:DB_INSTANCE_NAME=tcp:5432"  # Replace placeholders
+          - "-credential_file=/secrets/cloudsql/credentials.json"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: cloudsql-instance-credentials
+          mountPath: /secrets/cloudsql
+          readOnly: true
+        - name: ssl-certs
+          mountPath: /etc/ssl/certs
+        - name: cloudsql
+          mountPath: /cloudsql
+      volumes:
+      - name: cloudsql-instance-credentials
+        secret:
+          secretName: cloudsql-instance-credentials
+      - name: ssl-certs
+        hostPath:
+          path: /etc/ssl/certs
+      - name: cloudsql
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloud-sql-proxy
+  namespace: sim
+spec:
+  selector:
+    app: cloud-sql-proxy
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+
+
+
+

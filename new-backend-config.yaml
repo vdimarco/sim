@@ -1,0 +1,18 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: sim-backend-config-new
+  namespace: sim
+spec:
+  healthCheck:
+    checkIntervalSec: 5
+    healthyThreshold: 1
+    port: 3000
+    requestPath: /api/health
+    timeoutSec: 3
+    type: HTTP
+    unhealthyThreshold: 2
+  timeoutSec: 30
+  connectionDraining:
+    drainingTimeoutSec: 30
+

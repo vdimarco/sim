@@ -3,6 +3,7 @@ import { permissions, workflow, workflowBlocks, workspace } from '@sim/db/schema
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
+import { isProd } from '@/lib/environment'
 import { createLogger } from '@/lib/logs/console/logger'
 
 const logger = createLogger('Workspaces')
@@ -14,41 +15,49 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  try {
+    // Get all workspaces where the user has permissions
+    const userWorkspaces = await db
+      .select({
+        workspace: workspace,
+        permissionType: permissions.permissionType,
+      })
+      .from(permissions)
+      .innerJoin(workspace, eq(permissions.entityId, workspace.id))
+      .where(and(eq(permissions.userId, session.user.id), eq(permissions.entityType, 'workspace')))
+      .orderBy(desc(workspace.createdAt))
 
-  // Get all workspaces where the user has permissions
-  const userWorkspaces = await db
-    .select({
-      workspace: workspace,
-      permissionType: permissions.permissionType,
-    })
-    .from(permissions)
-    .innerJoin(workspace, eq(permissions.entityId, workspace.id))
-    .where(and(eq(permissions.userId, session.user.id), eq(permissions.entityType, 'workspace')))
-    .orderBy(desc(workspace.createdAt))
+    if (userWorkspaces.length === 0) {
+      // Create a default workspace for the user
+      const defaultWorkspace = await createDefaultWorkspace(session.user.id, session.user.name)
 
-  if (userWorkspaces.length === 0) {
-    // Create a default workspace for the user
-    const defaultWorkspace = await createDefaultWorkspace(session.user.id, session.user.name)
+      // Migrate existing workflows to the default workspace
+      await migrateExistingWorkflows(session.user.id, defaultWorkspace.id)
 
-    // Migrate existing workflows to the default workspace
-    await migrateExistingWorkflows(session.user.id, defaultWorkspace.id)
+      return NextResponse.json({ workspaces: [defaultWorkspace] })
+    }
 
-    return NextResponse.json({ workspaces: [defaultWorkspace] })
+    // If user has workspaces but might have orphaned workflows, migrate them
+    await ensureWorkflowsHaveWorkspace(session.user.id, userWorkspaces[0].workspace.id)
+
+    // Format the response with permission information
+    const workspacesWithPermissions = userWorkspaces.map(
+      ({ workspace: workspaceDetails, permissionType }) => ({
+        ...workspaceDetails,
+        role: permissionType === 'admin' ? 'owner' : 'member',
+        permissions: permissionType,
+      })
+    )
+
+    return NextResponse.json({ workspaces: workspacesWithPermissions })
+  } catch (error) {
+    const details = error instanceof Error ? error.message : 'Unknown error'
+    logger.error('Failed to fetch workspaces', { error, userId: session.user.id })
+    return NextResponse.json(
+      { error: 'Failed to fetch workspaces', ...(isProd ? {} : { details }) },
+      { status: 500 }
+    )
   }
-
-  // If user has workspaces but might have orphaned workflows, migrate them
-  await ensureWorkflowsHaveWorkspace(session.user.id, userWorkspaces[0].workspace.id)
-
-  // Format the response with permission information
-  const workspacesWithPermissions = userWorkspaces.map(
-    ({ workspace: workspaceDetails, permissionType }) => ({
-      ...workspaceDetails,
-      role: permissionType === 'admin' ? 'owner' : 'member', // Map admin to owner for compatibility
-      permissions: permissionType,
-    })
-  )
-
-  return NextResponse.json({ workspaces: workspacesWithPermissions })
 }
 
 // POST /api/workspaces - Create a new workspace

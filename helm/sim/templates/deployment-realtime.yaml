@@ -44,6 +44,12 @@ spec:
           env:
             - name: DATABASE_URL
               value: {{ include "sim.databaseUrl" . | quote }}
+            # Secrets from sim-secrets (GCP Secret Manager)
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sim.fullname" . }}-secrets
+                  key: better-auth-secret
             {{- range $key, $value := .Values.realtime.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
@@ -70,6 +76,8 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ include "sim.fullname" . }}-external-db-secret
+            - secretRef:
+                name: {{ include "sim.fullname" . }}-secrets
           {{- end }}
           {{- if .Values.realtime.livenessProbe }}
           livenessProbe:

@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sim-migrations
+  namespace: sim
+spec:
+  template:
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: migrations
+        image: gcr.io/buildz-ai/sim-migrations:latest
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://simuser:$(DB_PASSWORD)@cloud-sql-proxy.sim.svc.cluster.local:5432/sim"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sim-secrets
+              key: db-password
+        - name: NEXT_PUBLIC_APP_URL
+          value: "https://buildz.ai"
+        - name: BETTER_AUTH_URL
+          value: "https://buildz.ai"
+        resources:
+          limits:
+            memory: "1Gi"
+          requests:
+            memory: "512Mi"
+            cpu: "100m"
+      restartPolicy: Never
+  backoffLimit: 3

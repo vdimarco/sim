@@ -1,0 +1,10 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: sim-ssl-cert
+  namespace: sim
+spec:
+  domains:
+    - buildz.ai
+    - ws.buildz.ai
+

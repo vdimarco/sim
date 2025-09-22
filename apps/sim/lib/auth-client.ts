@@ -13,19 +13,35 @@ import { isProd } from '@/lib/environment'
 import { SessionContext, type SessionHookResult } from '@/lib/session/session-context'
 
 export function getBaseURL() {
-  let baseURL
-
-  if (env.VERCEL_ENV === 'preview') {
-    baseURL = `https://${getEnv('NEXT_PUBLIC_VERCEL_URL')}`
-  } else if (env.VERCEL_ENV === 'development') {
-    baseURL = `https://${getEnv('NEXT_PUBLIC_VERCEL_URL')}`
-  } else if (env.VERCEL_ENV === 'production') {
-    baseURL = env.BETTER_AUTH_URL || getEnv('NEXT_PUBLIC_APP_URL')
-  } else if (env.NODE_ENV === 'development') {
-    baseURL = getEnv('NEXT_PUBLIC_APP_URL') || env.BETTER_AUTH_URL || 'http://localhost:3000'
+  // Prefer browser origin when available (avoids hardcoding in client bundles)
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin
   }
 
-  return baseURL
+  // Resolve common environment-based hosts (server-side or during SSR)
+  const vercelEnv = env.VERCEL_ENV
+  const vercelUrl = getEnv('NEXT_PUBLIC_VERCEL_URL')
+  const appUrl = getEnv('NEXT_PUBLIC_APP_URL')
+  const betterAuthUrl = env.BETTER_AUTH_URL
+
+  // Explicit Vercel environments
+  if (vercelEnv === 'preview' || vercelEnv === 'development') {
+    if (vercelUrl) return `https://${vercelUrl}`
+  }
+  if (vercelEnv === 'production') {
+    if (betterAuthUrl) return betterAuthUrl
+    if (appUrl) return appUrl
+    if (vercelUrl) return `https://${vercelUrl}`
+  }
+
+  // Generic resolution for self-hosted or non-Vercel environments
+  if (betterAuthUrl) return betterAuthUrl
+  if (appUrl) return appUrl
+  if (vercelUrl) return `https://${vercelUrl}`
+
+  // Sensible defaults
+  if (env.NODE_ENV === 'development') return 'http://localhost:3000'
+  return 'http://localhost:3000'
 }
 
 export const client = createAuthClient({
